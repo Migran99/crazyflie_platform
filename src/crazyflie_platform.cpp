@@ -109,21 +109,43 @@ CrazyfliePlatform::CrazyfliePlatform() : as2::AerialPlatform()
       cf_.get(), {{"pm", "vbat"}, {"pm", "batteryLevel"}}, cb_bat_));
   bat_logBlock_->start(100);
 
-  // Optitrack
+  // Mocap
   this->declare_parameter<bool>("external_odom", false);
   this->get_parameter("external_odom", external_odom_);
-  this->declare_parameter<std::string>("external_odom_topic", "external_odom");
+
+  this->declare_parameter<std::string>("external_odom_topic", "cf_upm");
   this->get_parameter("external_odom_topic", external_odom_topic_);
+
+  this->declare_parameter<std::string>("mocap_type", "vicon");
+  this->get_parameter("mocap_type", mocap_type_);
+
+  this->declare_parameter<std::string>("mocap_address", "192.168.2.221:801");
+  this->get_parameter("mocap_address", mocap_address_);
 
   // If using external localization, create the subscriber to it
   if (external_odom_)
   {
+    RCLCPP_INFO(this->get_logger(), "External Localization: %s", mocap_type_.c_str());
+
+    // Create the object
+    mocap_cfg_["hostname"] = mocap_address_;
+    motion_capture_->connect(mocap_type_,mocap_cfg_);
+    motion_capture_.reset(libmotioncapture::MotionCapture::connect(mocap_type_,mocap_cfg_));
+    //motion_capture_ = libmotioncapture::MotionCapture::connect(mocap_type_,mocap_cfg_);
+    
+
+    // Initiate thread
+    mocap_threadptr_ = std::make_shared<std::thread>(&CrazyfliePlatform::externalOdomCB, this);
+
+    // OLD Version
+    /*
     RCLCPP_INFO(this->get_logger(), "External Localization: %s", external_odom_topic_.c_str());
     external_odom_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
         external_odom_topic_,
         10,
         std::bind(&CrazyfliePlatform::externalOdomCB, this, std::placeholders::_1));
     RCLCPP_DEBUG(this->get_logger(), "Subscribed to external odom topic!");
+    */
   }
 
   /*    TIMERS   */
@@ -424,11 +446,34 @@ void CrazyfliePlatform::pingCB()
   }
 }
 
-void CrazyfliePlatform::externalOdomCB(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
+void CrazyfliePlatform::externalOdomCB()
 {
-  // Send the external localization to the Crazyflie drone. VICON in mm, this in m. TODO: Change vicon pkg and not here?
-  cf_->sendExternalPoseUpdate(msg->pose.position.x/1000.0, msg->pose.position.y/1000.0, msg->pose.position.z/1000.0,
-                              msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z, msg->pose.orientation.w);
+
+  for (size_t frameId = 0;; ++frameId)
+  {
+    // Get a frame
+    motion_capture_->waitForNextFrame();
+
+    if (motion_capture_->supportsRigidBodyTracking()) {
+      auto rigidBodies = motion_capture_->rigidBodies();
+
+      for (auto const& item: rigidBodies) {
+        const auto& rigidBody = item.second;
+        if(rigidBody.name() == external_odom_topic_){
+          //std::cout << "    \"" << rigidBody.name() << "\":" << std::endl;
+          const auto& position = rigidBody.position();
+          const auto& rotation = rigidBody.rotation();
+          //std::cout << "       position: [" << position(0) << ", " << position(1) << ", " << position(2) << "]" << std::endl;
+          //std::cout << "       rotation: [" << rotation.w() << ", " << rotation.vec()(0) << ", "
+          //                                  << rotation.vec()(1) << ", " << rotation.vec()(2) << "]" << std::endl;
+
+            // Send the external localization to the Crazyflie drone.
+          cf_->sendExternalPoseUpdate((float)position(0), (float)position(1), (float)position(2),
+                              (float)rotation.vec()(0), (float)rotation.vec()(1), (float)rotation.vec()(2), (float)rotation.w());
+        }
+      }
+    }
+  }
 }
 
 Eigen::Vector3d CrazyfliePlatform::quaternion2Euler(geometry_msgs::msg::Quaternion quat)

@@ -8,8 +8,9 @@ if(NOT CMAKE_CXX_STANDARD)
 endif()
 #########################
 
-# Add the crazyflie_cpp submodule
+# Add the submodules
 add_subdirectory(crazyflie_cpp)
+add_subdirectory(libmotioncapture)
 
 
 
@@ -34,6 +35,7 @@ set(HEADER_HPP_FILES
 include_directories(
   include/${PROJECT_NAME}
   crazyflie_cpp/include/crazyflie_cpp
+  libmotioncapture/include/
   ${EIGEN3_INCLUDE_DIRS}
 )
 
@@ -52,6 +54,7 @@ ament_target_dependencies(${PROJECT_NAME}_node
 )
 target_link_libraries(${PROJECT_NAME}_node 
   crazyflie_cpp
+  libmotioncapture
 )
 
 

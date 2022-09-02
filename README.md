@@ -9,6 +9,16 @@ It is avaliable in GitHub: https://github.com/whoenig/crazyflie_cpp/tree/master
 Some examples with this library can be found at:
 https://github.com/whoenig/crazyflie_tools
 
+## How to:
+Clone the repo and:
+```
+git submodule update --init --recursive
+```
+
+You may change the libmotioncapture CMakeLists.txt in order to adapt to your mocap system.
+
+Then compile as ros pkg
+
 ## TODO
 - Add Acro control mode. The thrust is a uint16_t type but there is no information about the range that it has. (Whether 0- full range, % , etc).
 

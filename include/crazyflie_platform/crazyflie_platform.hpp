@@ -50,6 +50,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include <Crazyflie.h>
 #include <Eigen/Dense>
+#include <libmotioncapture/motioncapture.h>
 
 struct logBattery
 {
@@ -80,7 +81,7 @@ public:
     void onLogOdomPos(uint32_t time_in_ms, std::vector<double> *values, void * /*userData*/);
     void onLogBattery(uint32_t /*time_in_ms*/, struct logBattery *data);
     void updateOdom();
-    void externalOdomCB(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
+    void externalOdomCB();
 
 
     /*  --  AUX FUNCTIONS --  */
@@ -122,10 +123,15 @@ private:
     std::unique_ptr<LogBlock<struct logBattery>> bat_logBlock_;
     std::function<void(uint32_t, struct logBattery*)> cb_bat_;
 
-    // Optitrack
+    // Mocap
+    std::string mocap_type_;
     bool external_odom_;
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr external_odom_sub_;
     std::string external_odom_topic_;
+    std::shared_ptr<std::thread> mocap_threadptr_;
+    std::shared_ptr<libmotioncapture::MotionCapture> motion_capture_;
+    std::map<std::string, std::string> mocap_cfg_;
+    std::string mocap_address_;
     
 };
 
