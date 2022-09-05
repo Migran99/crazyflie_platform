@@ -460,16 +460,13 @@ void CrazyfliePlatform::externalOdomCB()
       for (auto const& item: rigidBodies) {
         const auto& rigidBody = item.second;
         if(rigidBody.name() == external_odom_topic_){
-          //std::cout << "    \"" << rigidBody.name() << "\":" << std::endl;
           const auto& position = rigidBody.position();
           const auto& rotation = rigidBody.rotation();
-          //std::cout << "       position: [" << position(0) << ", " << position(1) << ", " << position(2) << "]" << std::endl;
-          //std::cout << "       rotation: [" << rotation.w() << ", " << rotation.vec()(0) << ", "
-          //                                  << rotation.vec()(1) << ", " << rotation.vec()(2) << "]" << std::endl;
 
-            // Send the external localization to the Crazyflie drone.
-          cf_->sendExternalPoseUpdate((float)position(0), (float)position(1), (float)position(2),
-                              (float)rotation.vec()(0), (float)rotation.vec()(1), (float)rotation.vec()(2), (float)rotation.w());
+          // Send the external localization to the Crazyflie drone.
+          //cf_->sendExternalPoseUpdate((float)position(0), (float)position(1), (float)position(2),
+          //                    (float)rotation.vec()(0), (float)rotation.vec()(1), (float)rotation.vec()(2), (float)rotation.w());
+          cf_->sendExternalPositionUpdate((float)position(0), (float)position(1), (float)position(2));
         }
       }
     }
