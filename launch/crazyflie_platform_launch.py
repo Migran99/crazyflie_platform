@@ -29,6 +29,7 @@ def generate_launch_description():
         DeclareLaunchArgument('min_thrust',default_value='0.0'),
         DeclareLaunchArgument('controller_type',default_value='1'),
         DeclareLaunchArgument('estimator_type',default_value='1'),
+        DeclareLaunchArgument('log_level',default_value='INFO'),
         # if is not in simulation
         Node(
             package="crazyflie_platform",
@@ -49,6 +50,7 @@ def generate_launch_description():
                 "controller_type": LaunchConfiguration('controller_type'),
                 "estimator_type": LaunchConfiguration('estimator_type'),
                 }],
+            arguments=['--ros-args','--log-level',LaunchConfiguration('log_level')]
             #remappings=[("sensor_measurements/odometry", "self_localization/odom")],
         )    
     ])
