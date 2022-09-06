@@ -10,7 +10,7 @@
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice,
  *    this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -19,7 +19,7 @@
  * 3. Neither the name of the copyright holder nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
  * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
@@ -62,6 +62,7 @@ CrazyfliePlatform::CrazyfliePlatform() : as2::AerialPlatform()
   std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
   listVariables();
+  listParams();
   //cf_->logReset();
 
 
@@ -78,7 +79,6 @@ CrazyfliePlatform::CrazyfliePlatform() : as2::AerialPlatform()
     estimator_type_ = 2;
   cf_->setParamByName<uint8_t>("stabilizer", "estimator", (uint8_t)(estimator_type_)); // EKF
 
-  
   /*    SENSOR LOGGING    */
   cf_->requestLogToc(true);
 
@@ -128,8 +128,11 @@ CrazyfliePlatform::CrazyfliePlatform() : as2::AerialPlatform()
 
   /*    TIMERS   */
   ping_timer_ = this->create_wall_timer(
-      std::chrono::milliseconds(2), [this]()
-      { pingCB(); this->sendCommand(); });
+      std::chrono::milliseconds(10), [this]()
+      { 
+        pingCB(); 
+        this->sendCommand(); 
+      });
 
   RCLCPP_INFO(this->get_logger(), "Finished Init");
 }
@@ -404,6 +407,76 @@ void CrazyfliePlatform::listVariables()
                 });
 }
 
+void CrazyfliePlatform::listParams()
+{
+  cf_->requestParamToc(true);
+  std::for_each(cf_->paramsBegin(), cf_->paramsEnd(),
+                [this](const Crazyflie::ParamTocEntry &entry)
+                {
+                  std::ostringstream output_stream;
+                  output_stream << entry.group << "." << entry.name << " (";
+                  switch (entry.type)
+                  {
+                  case Crazyflie::ParamTypeUint8:
+                    output_stream << "uint8";
+                    break;
+                  case Crazyflie::ParamTypeInt8:
+                    output_stream << "int8";
+                    break;
+                  case Crazyflie::ParamTypeUint16:
+                    output_stream << "uint16";
+                    break;
+                  case Crazyflie::ParamTypeInt16:
+                    output_stream << "int16";
+                    break;
+                  case Crazyflie::ParamTypeUint32:
+                    output_stream << "uint32";
+                    break;
+                  case Crazyflie::ParamTypeInt32:
+                    output_stream << "int32";
+                    break;
+                  case Crazyflie::ParamTypeFloat:
+                    output_stream << "double";
+                    break;
+                  }
+                  if (entry.readonly)
+                  {
+                    output_stream << ", readonly";
+                  }
+                  output_stream << ") value: ";
+
+
+                  switch (entry.type) 
+                  {
+                  case Crazyflie::ParamTypeUint8:
+                    output_stream << (int)cf_->getParam<uint8_t>(entry.id);
+                    break;
+                  case Crazyflie::ParamTypeInt8:
+                    output_stream << (int)cf_->getParam<int8_t>(entry.id);
+                    break;
+                  case Crazyflie::ParamTypeUint16:
+                    output_stream << cf_->getParam<uint16_t>(entry.id);
+                    break;
+                  case Crazyflie::ParamTypeInt16:
+                    output_stream << cf_->getParam<int16_t>(entry.id);
+                    break;
+                  case Crazyflie::ParamTypeUint32:
+                    output_stream << cf_->getParam<uint32_t>(entry.id);
+                    break;
+                  case Crazyflie::ParamTypeInt32:
+                    output_stream << cf_->getParam<int32_t>(entry.id);
+                    break;
+                  case Crazyflie::ParamTypeFloat:
+                    output_stream << cf_->getParam<float>(entry.id);
+                    break;
+                  }
+
+                  output_stream << std::endl;
+
+                  RCLCPP_DEBUG(this->get_logger(), std::string{output_stream.str()}.c_str());
+                });
+}
+
 void CrazyfliePlatform::pingCB()
 {
   try
@@ -427,7 +500,7 @@ void CrazyfliePlatform::pingCB()
 void CrazyfliePlatform::externalOdomCB(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
 {
   // Send the external localization to the Crazyflie drone. VICON in mm, this in m.
-  //cf_->sendExternalPoseUpdate(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z,
+  // cf_->sendExternalPoseUpdate(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z,
   //                            msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z, msg->pose.orientation.w);
   cf_->sendExternalPositionUpdate(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z);
 }

@@ -74,6 +74,7 @@ public:
     /*  --  CRAZYFLIE FUNCTIONS --  */
 
     void listVariables();
+    void listParams();
     void pingCB();
     void onLogIMU(uint32_t time_in_ms, std::vector<double> *values, void * /*userData*/);
     void onLogOdomOri(uint32_t time_in_ms, std::vector<double> *values, void * /*userData*/);
