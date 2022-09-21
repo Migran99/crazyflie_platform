@@ -127,6 +127,7 @@ private:
     bool external_odom_;
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr external_odom_sub_;
     std::string external_odom_topic_;
+    long last_external_update_;
     
 };
 

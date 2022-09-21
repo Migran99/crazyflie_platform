@@ -79,6 +79,15 @@ CrazyfliePlatform::CrazyfliePlatform() : as2::AerialPlatform()
     estimator_type_ = 2;
   cf_->setParamByName<uint8_t>("stabilizer", "estimator", (uint8_t)(estimator_type_)); // EKF
 
+  // Reset EKF
+  cf_->setParamByName<uint8_t>("kalman", "resetEstimation", (uint8_t)(0));
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  cf_->setParamByName<uint8_t>("kalman", "resetEstimation", (uint8_t)(1));
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  cf_->setParamByName<uint8_t>("kalman", "resetEstimation", (uint8_t)(0));
+
+  cf_->setParamByName<float>("locSrv", "extQuatStdDev", (float)(0.045));
+
   /*    SENSOR LOGGING    */
   cf_->requestLogToc(true);
 
@@ -88,26 +97,26 @@ CrazyfliePlatform::CrazyfliePlatform() : as2::AerialPlatform()
   std::vector<std::string> vars_odom1 = {"stateEstimate.qx", "stateEstimate.qy", "stateEstimate.qz", "stateEstimate.qw"};
   cb_odom_ori_ = std::bind(&CrazyfliePlatform::onLogOdomOri, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
   odom_logBlock_ori_ = std::make_shared<LogBlockGeneric>(cf_.get(), vars_odom1, nullptr, cb_odom_ori_);
-  odom_logBlock_ori_->start(2);
+  odom_logBlock_ori_->start(10);
 
   // std::vector<std::string> vars_odom2 = {"kalman.stateX", "kalman.stateY", "kalman.stateZ", "kalman.statePX", "kalman.statePY", "kalman.statePZ"};
   std::vector<std::string> vars_odom2 = {"stateEstimate.x", "stateEstimate.y", "stateEstimate.z", "stateEstimate.vx", "stateEstimate.vy", "stateEstimate.vz"};
   cb_odom_pos_ = std::bind(&CrazyfliePlatform::onLogOdomPos, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
   odom_logBlock_pos_ = std::make_shared<LogBlockGeneric>(cf_.get(), vars_odom2, nullptr, cb_odom_pos_);
-  odom_logBlock_pos_->start(2);
+  odom_logBlock_pos_->start(10);
 
   // IMU
   std::vector<std::string> vars_imu = {"gyro.x", "gyro.y", "gyro.z", "acc.x", "acc.y", "acc.z"};
   cb_imu_ = std::bind(&CrazyfliePlatform::onLogIMU, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
-  imu_logBlock_ = std::make_shared<LogBlockGeneric>(cf_.get(), vars_imu, nullptr, cb_imu_);
-  imu_logBlock_->start(10);
+  //imu_logBlock_ = std::make_shared<LogBlockGeneric>(cf_.get(), vars_imu, nullptr, cb_imu_);
+  //imu_logBlock_->start(100);
 
   // Batterry
   std::vector<std::string> vars_bat = {"pm.batteryLevel"};
   cb_bat_ = std::bind(&CrazyfliePlatform::onLogBattery, this, std::placeholders::_1, std::placeholders::_2);
-  bat_logBlock_.reset(new LogBlock<struct logBattery>(
-      cf_.get(), {{"pm", "vbat"}, {"pm", "batteryLevel"}}, cb_bat_));
-  bat_logBlock_->start(100);
+  //bat_logBlock_.reset(new LogBlock<struct logBattery>(
+  //    cf_.get(), {{"pm", "vbat"}, {"pm", "batteryLevel"}}, cb_bat_));
+  //bat_logBlock_->start(100);
 
   // Optitrack
   this->declare_parameter<bool>("external_odom", false);
@@ -133,6 +142,8 @@ CrazyfliePlatform::CrazyfliePlatform() : as2::AerialPlatform()
         pingCB(); 
         this->sendCommand(); 
       });
+
+  last_external_update_ = this->get_clock()->now().nanoseconds();
 
   RCLCPP_INFO(this->get_logger(), "Finished Init");
 }
@@ -499,10 +510,15 @@ void CrazyfliePlatform::pingCB()
 
 void CrazyfliePlatform::externalOdomCB(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
 {
-  // Send the external localization to the Crazyflie drone. VICON in mm, this in m.
-  // cf_->sendExternalPoseUpdate(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z,
-  //                            msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z, msg->pose.orientation.w);
-  cf_->sendExternalPositionUpdate(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z);
+  if(this->get_clock()->now().nanoseconds() - last_external_update_ > 1e5)
+  {
+    last_external_update_ = this->get_clock()->now().nanoseconds();
+      // Send the external localization to the Crazyflie drone. VICON in mm, this in m.
+   cf_->sendExternalPoseUpdate(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z,
+                              msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z, msg->pose.orientation.w);
+  //cf_->sendExternalPositionUpdate(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z);
+
+  }
 }
 
 Eigen::Vector3d CrazyfliePlatform::quaternion2Euler(geometry_msgs::msg::Quaternion quat)
