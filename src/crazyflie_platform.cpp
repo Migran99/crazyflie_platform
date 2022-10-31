@@ -108,15 +108,15 @@ CrazyfliePlatform::CrazyfliePlatform() : as2::AerialPlatform()
   // IMU
   std::vector<std::string> vars_imu = {"gyro.x", "gyro.y", "gyro.z", "acc.x", "acc.y", "acc.z"};
   cb_imu_ = std::bind(&CrazyfliePlatform::onLogIMU, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
-  //imu_logBlock_ = std::make_shared<LogBlockGeneric>(cf_.get(), vars_imu, nullptr, cb_imu_);
-  //imu_logBlock_->start(100);
+  imu_logBlock_ = std::make_shared<LogBlockGeneric>(cf_.get(), vars_imu, nullptr, cb_imu_);
+  imu_logBlock_->start(100);
 
   // Batterry
   std::vector<std::string> vars_bat = {"pm.batteryLevel"};
   cb_bat_ = std::bind(&CrazyfliePlatform::onLogBattery, this, std::placeholders::_1, std::placeholders::_2);
-  //bat_logBlock_.reset(new LogBlock<struct logBattery>(
-  //    cf_.get(), {{"pm", "vbat"}, {"pm", "batteryLevel"}}, cb_bat_));
-  //bat_logBlock_->start(100);
+  bat_logBlock_.reset(new LogBlock<struct logBattery>(
+      cf_.get(), {{"pm", "vbat"}, {"pm", "batteryLevel"}}, cb_bat_));
+  bat_logBlock_->start(100);
 
   // Optitrack
   this->declare_parameter<bool>("external_odom", false);
